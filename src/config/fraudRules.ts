@@ -1,0 +1,20 @@
+export default {
+	thresholds: {
+		largeAmount: 5000,
+		mediumAmount: 1000,
+	},
+	suspiciousDomains: ['tempmail', 'mailinator', '10minutemail', 'example', 'test', 'disposable'],
+	suspiciousTlds: ['ru', 'cn'],
+	weights: {
+		largeAmount: 0.5,
+		mediumAmount: 0.3,
+		suspiciousDomain: 0.3,
+	},
+	rulesEnabled: {
+		amountCheck: true,
+		domainCheck: true,
+		tldCheck: true,
+	},
+} as const;
+
+

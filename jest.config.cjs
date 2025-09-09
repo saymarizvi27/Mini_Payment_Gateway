@@ -1,12 +1,12 @@
-import type { Config } from 'jest';
-
-const config: Config = {
+/** @type {import('jest').Config} */
+module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src/tests/jest'],
   testMatch: ['**/*.jest.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
     '^@config/(.*)$': '<rootDir>/src/config/$1',
     '^@controllers/(.*)$': '<rootDir>/src/controllers/$1',
     '^@routes/(.*)$': '<rootDir>/src/routes/$1',
@@ -17,15 +17,18 @@ const config: Config = {
     '^@clients/(.*)$': '<rootDir>/src/clients/$1',
   },
   transform: {
-    '^.+\\.(ts)$': [
+    '^.+\\.(ts|tsx)$': [
       'ts-jest',
       {
-        tsconfig: 'tsconfig.json',
-        useESM: true,
+        tsconfig: {
+          module: 'commonjs',
+        },
       },
     ],
   },
-  extensionsToTreatAsEsm: ['.ts'],
+  transformIgnorePatterns: [
+    '/node_modules/',
+  ],
   collectCoverage: true,
   collectCoverageFrom: [
     'src/**/*.ts',
@@ -34,7 +37,5 @@ const config: Config = {
   ],
   coverageReporters: ['text', 'lcov'],
 };
-
-export default config;
 
 

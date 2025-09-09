@@ -1,4 +1,4 @@
-import { computeRiskScore, domainIsSuspicious, getEmailDomain } from '@utils/risk';
+import { computeRiskScore, domainIsSuspicious, getEmailDomain } from '../../utils/risk';
 
 describe('risk utils', () => {
   it('extracts email domain', () => {

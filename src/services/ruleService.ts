@@ -1,4 +1,4 @@
-import defaultRules from '../config/fraudRules.json' assert { type: 'json' };
+import defaults from '../config/fraudRules.js';
 
 export interface FraudRules {
 	thresholds: {
@@ -19,7 +19,7 @@ export interface FraudRules {
 	};
 }
 
-let currentRules: FraudRules = (defaultRules as unknown) as FraudRules;
+let currentRules: FraudRules = (defaults as unknown) as FraudRules;
 
 export const ruleService = {
 	get(): FraudRules {
