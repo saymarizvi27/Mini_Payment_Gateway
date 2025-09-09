@@ -5,6 +5,186 @@ info:
 servers:
   - url: /api
 paths:
+  /charge:
+    post:
+      summary: Create a charge with risk heuristics and LLM explanation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                currency:
+                  type: string
+                source:
+                  type: string
+                email:
+                  type: string
+              required: [amount, currency, source, email]
+      responses:
+        '201':
+          description: Charge approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChargeResult'
+        '403':
+          description: Charge blocked due to risk
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChargeResult'
+  /transactions:
+    get:
+      summary: List transaction logs
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Paged transaction list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: integer
+                  pageSize:
+                    type: integer
+                  total:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TransactionLogEntry'
+  /config/fraud-rules:
+    put:
+      summary: Update fraud rules
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FraudRules'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+components:
+  schemas:
+    ChargeResult:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        provider:
+          type: string
+        status:
+          type: string
+          enum: [success, blocked]
+        riskScore:
+          type: number
+        explanation:
+          type: string
+    FraudRules:
+      type: object
+      properties:
+        thresholds:
+          type: object
+          properties:
+            largeAmount:
+              type: number
+            mediumAmount:
+              type: number
+          required: [largeAmount, mediumAmount]
+        suspiciousDomains:
+          type: array
+          items:
+            type: string
+        suspiciousTlds:
+          type: array
+          items:
+            type: string
+        weights:
+          type: object
+          properties:
+            largeAmount:
+              type: number
+            mediumAmount:
+              type: number
+            suspiciousDomain:
+              type: number
+          required: [largeAmount, mediumAmount, suspiciousDomain]
+        rulesEnabled:
+          type: object
+          properties:
+            amountCheck:
+              type: boolean
+            domainCheck:
+              type: boolean
+            tldCheck:
+              type: boolean
+          required: [amountCheck, domainCheck, tldCheck]
+      required: [thresholds, suspiciousDomains, suspiciousTlds, weights, rulesEnabled]
+    TransactionLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        amount:
+          type: number
+        currency:
+          type: string
+        email:
+          type: string
+        source:
+          type: string
+        riskScore:
+          type: number
+        status:
+          type: string
+          enum: [success, blocked]
+        provider:
+          type: string
+        metadata:
+          type: object
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+openapi: 3.0.3
+info:
+  title: Mini Payment Gateway Proxy
+  version: 0.1.0
+servers:
+  - url: /api
+paths:
   /payments:
     post:
       summary: Create a payment via provider proxy

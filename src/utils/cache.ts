@@ -1,38 +1,17 @@
-import Redis from 'ioredis';
-import { env } from '../config/env.js';
-import { logger } from './logger.js';
 
-export const redis = new (Redis as unknown as {
-	new (url: string, opts: Record<string, unknown>): {
-		status: string;
-		connect: () => Promise<void>;
-		get: (k: string) => Promise<string | null>;
-		set: (...args: unknown[]) => Promise<unknown>;
-	};
-})(env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 2 } as Record<string, unknown>);
-
-export const connectRedis = async () => {
-	if (redis.status === 'end' || redis.status === 'wait' || redis.status === 'close') {
-		await redis.connect();
-		logger.info('Redis connected');
-	}
-};
+// Pure in-memory cache with TTL using Map
+const memoryStore = new Map<string, { value: unknown; expiresAt: number }>();
 
 export const getCache = async <T>(key: string): Promise<T | null> => {
-	try {
-		const val = await redis.get(key);
-		if (!val) return null;
-		return JSON.parse(val) as T;
-	} catch (err) {
-		logger.warn({ err }, 'Redis get failed');
+	const item = memoryStore.get(key);
+	if (!item) return null;
+	if (item.expiresAt <= Date.now()) {
+		memoryStore.delete(key);
 		return null;
 	}
+	return item.value as T;
 };
 
 export const setCache = async (key: string, value: unknown, ttlSeconds: number): Promise<void> => {
-	try {
-		await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
-	} catch (err) {
-		logger.warn({ err }, 'Redis set failed');
-	}
+	memoryStore.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
 };

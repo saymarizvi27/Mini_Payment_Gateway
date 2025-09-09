@@ -26,8 +26,7 @@ export const env = {
 	LLM_PROVIDER: process.env.LLM_PROVIDER || 'openai',
 	OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
 	OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-	// Redis / Cache
-	REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
+	// Cache
 	CACHE_TTL_SECONDS: Number(process.env.CACHE_TTL_SECONDS || 300),
 	// Admin
 	ADMIN_TOKEN: process.env.ADMIN_TOKEN || '',
