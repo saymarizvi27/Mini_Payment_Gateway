@@ -1,10 +1,10 @@
 import type { Request, Response } from 'express';
 import Joi from 'joi';
-import { HttpError } from '../middleware/errors';
-import { llmRiskService } from '../services/llmRiskService';
-import { proxyPaymentService } from '../services/paymentService';
-import { computeRiskScore } from '../utils/risk';
-import { transactionLog } from '../services/transactionLog';
+import { HttpError } from '../middleware/errors.js';
+import { llmRiskService } from '../services/llmRiskService.js';
+import { proxyPaymentService } from '../services/paymentService.js';
+import { computeRiskScore } from '../utils/risk.js';
+import { transactionLog } from '../services/transactionLog.js';
 
 const schema = Joi.object({
 	amount: Joi.number().positive().required(),

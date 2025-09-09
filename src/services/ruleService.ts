@@ -1,4 +1,4 @@
-import defaultRules from '@config/fraudRules.json' with { type: 'json' };
+import defaultRules from '../config/fraudRules.json' assert { type: 'json' };
 
 export interface FraudRules {
 	thresholds: {
