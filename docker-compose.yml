@@ -1,0 +1,28 @@
+services:
+  api:
+    build: .
+    image: mini-payment-gateway-proxy:latest
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+  # Example reverse proxy (optional). Uncomment to use.
+  # proxy:
+  #   image: nginx:alpine
+  #   volumes:
+  #     - ./infra/nginx.conf:/etc/nginx/nginx.conf:ro
+  #   ports:
+  #     - "8080:80"
+  #   depends_on:
+  #     - api

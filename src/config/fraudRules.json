@@ -1,0 +1,13 @@
+{
+	"largeAmountThreshold": 5000,
+	"mediumAmountThreshold": 1000,
+	"suspiciousDomains": ["tempmail", "mailinator", "10minutemail", "example", "test", "disposable"],
+	"suspiciousTlds": ["ru", "cn"],
+	"weights": {
+		"largeAmount": 0.5,
+		"mediumAmount": 0.3,
+		"suspiciousDomain": 0.3
+	}
+}
+
+

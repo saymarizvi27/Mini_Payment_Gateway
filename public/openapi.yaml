@@ -1,0 +1,166 @@
+openapi: 3.0.3
+info:
+  title: Mini Payment Gateway Proxy
+  version: 0.1.0
+servers:
+  - url: /api
+paths:
+  /payments:
+    post:
+      summary: Create a payment via provider proxy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                currency:
+                  type: string
+                source:
+                  type: object
+                  properties:
+                    token:
+                      type: string
+              required: [amount, currency, source]
+      responses:
+        '201':
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+  /payments/{id}:
+    get:
+      summary: Retrieve a payment by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+  /risk/summary:
+    post:
+      summary: Get LLM risk summary for a transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transaction:
+                  $ref: '#/components/schemas/Transaction'
+                context:
+                  type: object
+      responses:
+        '200':
+          description: Risk summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskSummary'
+  /charge:
+    post:
+      summary: Create a charge with risk heuristics and LLM explanation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                currency:
+                  type: string
+                source:
+                  type: string
+                email:
+                  type: string
+              required: [amount, currency, source, email]
+      responses:
+        '201':
+          description: Charge approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChargeResult'
+        '403':
+          description: Charge blocked due to risk
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChargeResult'
+components:
+  schemas:
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [succeeded, pending, failed]
+        amount:
+          type: integer
+        currency:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        provider:
+          type: string
+        metadata:
+          type: object
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        merchant:
+          type: string
+        cardCountry:
+          type: string
+        mcc:
+          type: string
+        ip:
+          type: string
+    RiskSummary:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        riskScore:
+          type: integer
+        summary:
+          type: string
+        provider:
+          type: string
+    ChargeResult:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        provider:
+          type: string
+        status:
+          type: string
+          enum: [success, blocked]
+        riskScore:
+          type: number
+        explanation:
+          type: string
