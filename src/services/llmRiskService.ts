@@ -24,15 +24,18 @@ interface LlmProvider {
 }
 
 class MockLlmProvider implements LlmProvider {
-	async summarize(tx: TransactionInput): Promise<RiskSummary> {
-		const score = Math.min(1, (tx.amount / 10000)); // Convert to 0-1 range
-		return {
-			transactionId: tx.id,
-			riskScore: score,
-			summary: `Heuristic risk evaluation for ${tx.amount} ${tx.currency}.`,
-			provider: 'mock',
-		};
-	}
+	   async summarize(tx: TransactionInput, context?: Record<string, unknown>): Promise<RiskSummary> {
+		   // Use a sigmoid function for a more realistic, non-linear risk score
+		   // Centered at 5000, steeper curve for higher amounts
+		   const score = 1 / (1 + Math.exp(-((tx.amount - 5000) / 2000)));
+		   const summary = `Transaction ${tx.id} for ${tx.amount} ${tx.currency} is evaluated as ${(score * 100).toFixed(1)}% risky (sigmoid model). Context: ${context ? JSON.stringify(context) : 'none'}`;
+		   return {
+			   transactionId: tx.id,
+			   riskScore: score,
+			   summary,
+			   provider: 'mock',
+		   };
+	   }
 }
 
 class OpenAiLlmProvider implements LlmProvider {
@@ -48,28 +51,44 @@ class OpenAiLlmProvider implements LlmProvider {
 		const sys = `You are a fraud risk analyst. Analyze the transaction and produce (1) a risk score 0-1 and (2) a brief explanation.`;
 		const user = JSON.stringify({ transaction: tx, context: context || {} });
 
-		const completion = await this.client.chat.completions.create({
-			model: this.model,
-			messages: [
-				{ role: 'system', content: sys },
-				{ role: 'user', content: user },
-			],
-			temperature: 0.2,
-		});
+		   try {
+			   const completion = await this.client.chat.completions.create({
+				   model: this.model,
+				   messages: [
+					   { role: 'system', content: sys },
+					   { role: 'user', content: user },
+				   ],
+				   temperature: 0.2,
+			   });
 
-		const content = completion.choices[0]?.message?.content || '';
-		const scoreMatch = content.match(/(risk\s*score|score)\s*[:=-]?\s*(\d*\.?\d+)/i);
-		const parsedScore = scoreMatch ? Number(scoreMatch[2]) : 0.5;
-		// If the parsed score looks like it's in 0-100 range, normalize it
-		const normalizedScore = parsedScore > 1 ? parsedScore / 100 : parsedScore;
-		const riskScore = Math.max(0, Math.min(1, normalizedScore));
+			   const content = completion.choices[0]?.message?.content || '';
+			   const scoreMatch = content.match(/(risk\s*score|score)\s*[:=-]?\s*(\d*\.?\d+)/i);
+			   const parsedScore = scoreMatch ? Number(scoreMatch[2]) : 0.5;
+			   // If the parsed score looks like it's in 0-100 range, normalize it
+			   const normalizedScore = parsedScore > 1 ? parsedScore / 100 : parsedScore;
+			   const riskScore = Math.max(0, Math.min(1, normalizedScore));
 
-		return {
-			transactionId: tx.id,
-			riskScore,
-			summary: content || 'No summary',
-			provider: 'openai',
-		};
+			   return {
+				   transactionId: tx.id,
+				   riskScore,
+				   summary: content || 'No summary',
+				   provider: 'openai',
+			   };
+		   } catch (err: any) {
+			   // Normalize OpenAI errors for the error handler
+			   let message = 'External API error';
+			   let status = 502;
+			   if (err?.status) status = err.status;
+			   if (err?.message) message = err.message;
+			   if (err?.code === 'insufficient_quota' || err?.message?.includes('quota')) {
+				   status = 429;
+				   message = 'OpenAI quota exceeded';
+			   }
+			   const error: any = new Error(message);
+			   error.status = status;
+			   error.cause = err;
+			   throw error;
+		   }
 	}
 }
 
@@ -83,18 +102,23 @@ const buildKey = (tx: TransactionInput, context?: Record<string, unknown>): stri
 };
 
 export const llmRiskService = {
-	async summarize(tx: TransactionInput, context?: Record<string, unknown>) {
-		const key = buildKey(tx, context);
-		const local = lru.get(key);
-		if (local) return { ...local, provider: `${local.provider}-cached` };
-		const cached = await getCache<RiskSummary>(key);
-		if (cached) {
-			lru.set(key, cached);
-			return { ...cached, provider: `${cached.provider}-cached` };
-		}
-		const result = await provider.summarize(tx, context);
-		lru.set(key, result);
-		await setCache(key, result, env.CACHE_TTL_SECONDS);
-		return result;
-	},
+   async summarize(tx: TransactionInput, context?: Record<string, unknown>) {
+	   const key = buildKey(tx, context);
+	   const local = lru.get(key);
+	   if (local) return { ...local, provider: `${local.provider}-cached` };
+	   const cached = await getCache<RiskSummary>(key);
+	   if (cached) {
+		   lru.set(key, cached);
+		   return { ...cached, provider: `${cached.provider}-cached` };
+	   }
+	   try {
+		   const result = await provider.summarize(tx, context);
+		   lru.set(key, result);
+		   await setCache(key, result, env.CACHE_TTL_SECONDS);
+		   return result;
+	   } catch (err: any) {
+		   // Forward normalized error to Express error handler
+		   throw err;
+	   }
+   },
 };
